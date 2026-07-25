@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>中国电力出口流向 · 三列桑基图</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Microsoft YaHei','PingFang SC',sans-serif;
+     background:linear-gradient(135deg,#0d1b2a,#1b2838 50%,#0d1b2a);
+     min-height:100vh;color:#e0e0e0;overflow:hidden}
+
+.header{background:rgba(0,0,0,.35);backdrop-filter:blur(10px);
+       padding:12px 28px;border-bottom:2px solid rgba(84,112,198,.5);
+       display:flex;align-items:center;justify-content:space-between}
+
+.header-info{font-size:12px;color:#7a8ba6}
+
+.main{flex:1;display:flex;height:calc(100vh - 56px)}
+
+/* 左侧 */
+.side-left{width:290px;background:rgba(255,255,255,.04);
+           backdrop-filter:blur(5px);padding:16px 18px;overflow-y:auto;
+           border-right:1px solid rgba(255,255,255,.08);
+           transition: width 0.4s ease, padding 0.4s ease;
+}
+.side-left.collapse{
+    width:0 !important;
+    padding:0;
+    overflow:hidden;
+    border-right:none;
+}
+
+.side-left h3{color:#5470C6;font-size:15px;margin-bottom:12px;
+              border-bottom:1px solid rgba(84,112,198,.3);padding-bottom:6px}
+.story{background:rgba(255,255,255,.07);border-radius:8px;padding:12px;
+       margin-bottom:12px;border-left:3px solid #5470C6;transition:all .3s}
+.story:hover{background:rgba(255,255,255,.11);transform:translateX(4px)}
+.story h4{color:#91CC75;font-size:13px;margin-bottom:6px}
+.story p{font-size:11.5px;line-height:1.8;color:#a8b2bd}
+.hl{color:#FAC858;font-weight:bold;font-size:13px}
+
+/* 中间 */
+.chart-wrap{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    padding:6px;
+    position:relative;
+}
+#chart{width:100%;height:100%}
+
+/* 侧边栏中点收起/展开按钮样式 */
+.side-left-toggle,
+.side-right-toggle{
+    position:absolute;
+    top:50%;
+    transform:translateY(-50%);
+    z-index:10;
+
+    width:34px;
+    height:70px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+
+    background:rgba(84,112,198,.25);
+    border:1px solid rgba(84,112,198,.5);
+    color:#e0e0e0;
+    font-size:18px;
+    font-weight:bold;
+    cursor:pointer;
+    transition:0.35s ease;
+}
+
+.side-left-toggle{
+    right:-1px;
+    border-radius:0 6px 6px 0;
+}
+
+.side-right-toggle{
+    left:-1px;
+    border-radius:6px 0 0 6px;
+}
+
+.side-left-toggle:hover,
+.side-right-toggle:hover{
+    background:rgba(84,112,198,.45);
+}
+
+/* 左侧边栏收起时按钮位置与圆角切换 */
+.side-left.collapse .side-left-toggle{
+    right:auto;
+    left:0;
+    border-radius:6px 0 0 6px;
+}
+/* 右侧边栏收起时按钮位置与圆角切换 */
+.side-right.collapse .side-right-toggle{
+    left:auto;
+    right:0;
+    border-radius:0 6px 6px 0;
+}
+
+/* 右侧 */
+.side-right{width:270px;background:rgba(255,255,255,.04);
+            backdrop-filter:blur(5px);padding:16px 18px;overflow-y:auto;
+            border-left:1px solid rgba(255,255,255,.08);
+            transition: width 0.4s ease, padding 0.4s ease;
+}
+.side-right.collapse{
+    width:0 !important;
+    padding:0;
+    overflow:hidden;
+    border-left:none;
+}
+
+.side-right h3{color:#EE6666;font-size:15px;margin-bottom:12px;
+               border-bottom:1px solid rgba(238,102,102,.3);padding-bottom:6px}
+.lg{display:flex;align-items:center;margin-bottom:10px;padding:9px 10px;
+    background:rgba(255,255,255,.05);border-radius:6px;cursor:pointer;
+    transition:all .25s}
+.lg:hover{background:rgba(255,255,255,.1)}
+.lg-dot{width:26px;height:26px;border-radius:4px;margin-right:10px;
+        display:flex;align-items:center;justify-content:center;font-size:13px}
+.lg-name{font-weight:bold;font-size:13px}
+.lg-val{font-size:11px;color:#8896a7;margin-top:1px}
+.box{margin-top:14px;padding:12px;background:rgba(84,112,198,.1);
+     border-radius:8px;border:1px solid rgba(84,112,198,.25)}
+.box h4{color:#91CC75;font-size:13px;margin-bottom:8px}
+.box p{font-size:11.5px;line-height:1.8;color:#a8b2bd}
+
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-thumb{background:rgba(84,112,198,.45);border-radius:3px}
+</style>
+</head>
+<body>
+	<div class="header">
+	    <h1>⚡ 中国电力出口流向 · 数据可视化</h1>
+	    <div class="header-info">数据来源：中国海关总署 | 单位：千瓦时(kWh)</div>
+	</div>
+
+<div class="main">
+  <div class="side-left">
+    <h3>📖 电力外交故事</h3>
+    <div class="story">
+      <h4>🌊 湄公河：六国的生命之河</h4>
+      <p>湄公河全长<span class="hl">4909公里</span>，发源于中国青海，流经缅甸、老挝、泰国、柬埔寨和越南。中国在澜沧江建设的水电站，为整个东南亚提供清洁电力。</p>
+    </div>
+    <div class="story">
+      <h4>🇨🇳➡🇻🇳 中越电力合作</h4>
+      <p>中越电力贸易始于<span class="hl">2004年</span>，是中国与东盟最早的电力合作。累计出口<span class="hl">164.2亿kWh</span>，占总量的<span class="hl">64.4%</span>。</p>
+    </div>
+    <div class="story">
+      <h4>🇨🇳➡🇱🇦 中老互联互通</h4>
+      <p>老挝素有"东南亚蓄电池"之称，但部分地区仍需从中国进口电力。中国通过<span class="hl">230千伏联网工程</span>向老挝稳定供电。</p>
+    </div>
+    <div class="story">
+      <h4>🇨🇳➡🇲🇲 中缅电力走廊</h4>
+      <p>中缅电力合作是"一带一路"重要组成。通过<span class="hl">500千伏直流输电工程</span>，云南水电资源输送至缅甸边境。</p>
+    </div>
+    <div class="story">
+      <h4>💡 绿色丝绸之路</h4>
+      <p>出口东南亚的电力中，水电占比超<span class="hl">80%</span>，每年减少二氧化碳排放约<span class="hl">200万吨</span>。</p>
+    </div>
+  </div>
+
+  <div class="chart-wrap">
+    <div class="side-left-toggle" id="toggleLeft">></div>
+    <div class="side-right-toggle" id="toggleRight"><</div>
+    <div id="chart"></div>
+  </div>
+
+  <div class="side-right">
+    <h3>📊 数据图例</h3>
+    <div class="lg" data-country="越南">
+      <div class="lg-dot" style="background:#FAC858">🇻🇳</div>
+      <div><div class="lg-name">越南</div><div class="lg-val">164.25亿 kWh（64.4%）</div></div>
+    </div>
+    <div class="lg" data-country="缅甸">
+      <div class="lg-dot" style="background:#EE6666">🇲🇲</div>
+      <div><div class="lg-name">缅甸</div><div class="lg-val">80.86亿 kWh（31.7%）</div></div>
+    </div>
+    <div class="lg" data-country="老挝">
+      <div class="lg-dot" style="background:#91CC75">🇱🇦</div>
+      <div><div class="lg-name">老挝</div><div class="lg-val">10.02亿 kWh（3.9%）</div></div>
+    </div>
+
+    <div class="box">
+      <h4>🏞️ 澜湄合作（LMC）</h4>
+      <p>2016年正式启动的澜湄合作机制，将水资源合作与能源安全列为优先领域，六国共建<span class="hl">澜湄水资源合作中心</span>。</p>
+    </div>
+    <div class="box" style="margin-top:12px">
+      <h4>🔮 未来展望</h4>
+      <p>随着<span class="hl">东盟电网</span>建设推进，区域电力贸易规模预计在2030年前增长<span class="hl">3倍</span>。</p>
+    </div>
+    <div style="margin-top:14px;padding:10px;background:rgba(255,255,255,.05);border-radius:6px">
+      <h4 style="color:#5470C6;font-size:12px;margin-bottom:6px">📌 说明</h4>
+      <ul style="font-size:11px;color:#8896a7;line-height:2">
+        <li>三列：中国 → 年份 → 进口国</li>
+        <li>线条宽度与电量成正比</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+const NODES = [{"name": "中国", "x": 0.02, "y": 0.5, "itemStyle": {"color": "#5470C6", "borderColor": "#7a9af0", "borderWidth": 2},
+ "label": {"show": true, "position": "right", "formatter": "🇨🇳 中国\n255.13亿 kWh", "fontSize": 15, "fontWeight": "bold", "color": "#e8e8e8"}}, {"name": "2015", "x": 0.42, "y": 0.08, "itemStyle": {"color": "#3a5fa8", "borderColor": "#5b8def", "borderWidth": 1},
+  "label": {"show": true, "position": "top", "formatter": "2015\n22.08亿", "fontSize": 11, "color": "#cfd8e3"}}, {"name": "2016", "x": 0.42, "y": 0.164, "itemStyle": {"color": "#3a5fa8", "borderColor": "#5b8def", "borderWidth": 1}, 
+  "label": {"show": true, "position": "top", "formatter": "2016\n18.66亿", "fontSize": 11, "color": "#cfd8e3"}}, {"name": "2017", "x": 0.42, "y": 0.248, "itemStyle": {"color": "#3a5fa8", "borderColor": "#5b8def", "borderWidth": 1},
+   "label": {"show": true, "position": "top", "formatter": "2017\n17.34亿", "fontSize": 11, "color": "#cfd8e3"}}, {"name": "2018", "x": 0.42, "y": 0.332, "itemStyle": {"color": "#3a5fa8", "borderColor": "#5b8def", "borderWidth": 1}, 
+   "label": {"show": true, "position": "top", "formatter": "2018\n21.60亿", "fontSize": 11, "color": "#cfd8e3"}}, {"name": "2019", "x": 0.42, "y": 0.416, "itemStyle": {"color": "#3a5fa8", "borderColor": "#5b8def", "borderWidth": 1}, 
+   "label": {"show": true, "position": "top", "formatter": "2019\n29.08亿", "fontSize": 11, "color": "#cfd8e3"}}, {"name": "2020", "x": 0.42, "y": 0.5, "itemStyle": {"color": "#3a5fa8", "borderColor": "#5b8def", "borderWidth": 1}, 
+   "label": {"show": true, "position": "top", "formatter": "2020\n28.57亿", "fontSize": 11, "color": "#cfd8e3"}}, {"name": "2021", "x": 0.42, "y": 0.584, "itemStyle": {"color": "#3a5fa8", "borderColor": "#5b8def", "borderWidth": 1}, 
+   "label": {"show": true, "position": "top", "formatter": "2021\n10.89亿", "fontSize": 11, "color": "#cfd8e3"}}, {"name": "2022", "x": 0.42, "y": 0.668, "itemStyle": {"color": "#3a5fa8", "borderColor": "#5b8def", "borderWidth": 1}, 
+   "label": {"show": true, "position": "top", "formatter": "2022\n14.68亿", "fontSize": 11, "color": "#cfd8e3"}}, {"name": "2023", "x": 0.42, "y": 0.752, "itemStyle": {"color": "#3a5fa8", "borderColor": "#5b8def", "borderWidth": 1},
+	"label": {"show": true, "position": "top", "formatter": "2023\n30.84亿", "fontSize": 11, "color": "#cfd8e3"}}, {"name": "2024", "x": 0.42, "y": 0.836, "itemStyle": {"color": "#3a5fa8", "borderColor": "#5b8def", "borderWidth": 1}, 
+	"label": {"show": true, "position": "top", "formatter": "2024\n29.59亿", "fontSize": 11, "color": "#cfd8e3"}}, {"name": "2025", "x": 0.42, "y": 0.92, "itemStyle": {"color": "#3a5fa8", "borderColor": "#5b8def", "borderWidth": 1}, 
+	"label": {"show": true, "position": "top", "formatter": "2025\n31.81亿", "fontSize": 11, "color": "#cfd8e3"}}, {"name": "缅甸", "x": 0.88, "y": 0.5, "itemStyle": {"color": "#EE6666", "borderColor": "#EE6666", "borderWidth": 2},
+	"label": {"show": true, "position": "left", "formatter": "🇲🇲 缅甸\n80.86亿", "fontSize": 13, "fontWeight": "bold", "color": "#e8e8e8"}}, {"name": "老挝", "x": 0.88, "y": 0.82, "itemStyle": {"color": "#91CC75", "borderColor": "#91CC75", "borderWidth": 2},
+	"label": {"show": true, "position": "left", "formatter": "🇱🇦 老挝\n10.02亿", "fontSize": 13, "fontWeight": "bold", "color": "#e8e8e8"}}, {"name": "越南", "x": 0.88, "y": 0.18, "itemStyle": {"color": "#FAC858", "borderColor": "#FAC858", "borderWidth": 2}, 
+	"label": {"show": true, "position": "left", "formatter": "🇻🇳 越南\n164.25亿", "fontSize": 13, "fontWeight": "bold", "color": "#e8e8e8"}}];
+const LINKS = [
+{"source": "中国", "target": "2015", "value": 2207797419, "layer": 1, "_baseOpacity": 0.55, "lineStyle": {"color": "source", "curveness": 0.35, "opacity": 0.55, "width": 0}, "_id": 0}, 
+{"source": "中国", "target": "2016", "value": 1866205318, "layer": 1, "_baseOpacity": 0.55, "lineStyle": {"color": "source", "curveness": 0.35, "opacity": 0.55, "width": 0}, "_id": 1},
+{"source": "中国", "target": "2017", "value": 1733594401, "layer": 1, "_baseOpacity": 0.55, "lineStyle": {"color": "source", "curveness": 0.35, "opacity": 0.55, "width": 0}, "_id": 2}, 
+{"source": "中国", "target": "2018", "value": 2159884271, "layer": 1, "_baseOpacity": 0.55, "lineStyle": {"color": "source", "curveness": 0.35, "opacity": 0.55, "width": 0}, "_id": 3},
+{"source": "中国", "target": "2019", "value": 2907795165, "layer": 1, "_baseOpacity": 0.55, "lineStyle": {"color": "source", "curveness": 0.35, "opacity": 0.55, "width": 0}, "_id": 4}, 
+{"source": "中国", "target": "2020", "value": 2856811328, "layer": 1, "_baseOpacity": 0.55, "lineStyle": {"color": "source", "curveness": 0.35, "opacity": 0.55, "width": 0}, "_id": 5}, 
+{"source": "中国", "target": "2021", "value": 1088817265, "layer": 1, "_baseOpacity": 0.55, "lineStyle": {"color": "source", "curveness": 0.35, "opacity": 0.55, "width": 0}, "_id": 6},
+{"source": "中国", "target": "2022", "value": 1467899329, "layer": 1, "_baseOpacity": 0.55, "lineStyle": {"color": "source", "curveness": 0.35, "opacity": 0.55, "width": 0}, "_id": 7},
+{"source": "中国", "target": "2023", "value": 3083563483, "layer": 1, "_baseOpacity": 0.55, "lineStyle": {"color": "source", "curveness": 0.35, "opacity": 0.55, "width": 0}, "_id": 8}, 
+{"source": "中国", "target": "2024", "value": 2958689596, "layer": 1, "_baseOpacity": 0.55, "lineStyle": {"color": "source", "curveness": 0.35, "opacity": 0.55, "width": 0}, "_id": 9}, 
+{"source": "中国", "target": "2025", "value": 3181493033, "layer": 1, "_baseOpacity": 0.55, "lineStyle": {"color": "source", "curveness": 0.35, "opacity": 0.55, "width": 0}, "_id": 10}, 
+{"source": "2015", "target": "缅甸", "value": 211694621, "layer": 2, "country": "缅甸", "_baseOpacity": 0.6, "lineStyle": {"color": {"type": "linear", "x": 0, "y": 0, "x2": 1, "y2": 0, "colorStops": [{"offset": 0, "color": "#5b8def"}, {"offset": 1, "color": "#EE6666"}]}, "curveness": 0.25, "opacity": 0.6, "width": 0}, "_id": 11}, 
+{"source": "2015", "target": "老挝", "value": 255329457, "layer": 2, "country": "老挝", "_baseOpacity": 0.6, "lineStyle": {"color": {"type": "linear", "x": 0, "y": 0, "x2": 1, "y2": 0, "colorStops": [{"offset": 0, "color": "#5b8def"}, {"offset": 1, "color": "#91CC75"}]}, "curveness": 0.25, "opacity": 0.6, "width": 0}, "_id": 12}, 
+{"source": "2015", "target": "越南", "value": 1740773341, "layer": 2, "country": "越南", "_baseOpacity": 0.6, "lineStyle": {"color": {"type": "linear", "x": 0, "y": 0, "x2": 1, "y2": 0, "colorStops": [{"offset": 0, "color": "#5b8def"}, {"offset": 1, "color": "#FAC858"}]}, "curveness": 0.25, "opacity": 0.6, "width": 0}, "_id": 13},
+{"source": "2016", "target": "缅甸", "value": 357484390, "layer": 2, "country": "缅甸", "_baseOpacity": 0.6, "lineStyle": {"color": {"type": "linear", "x": 0, "y": 0, "x2": 1, "y2": 0, "colorStops": [{"offset": 0, "color": "#5b8def"}, {"offset": 1, "color": "#EE6666"}]}, "curveness": 0.25, "opacity": 0.6, "width": 0}, "_id": 14},
+{"source": "2016", "target": "老挝", "value": 128477008, "layer": 2, "country": "老挝", "_baseOpacity": 0.6, "lineStyle": {"color": {"type": "linear", "x": 0, "y": 0, "x2": 1, "y2": 0, "colorStops": [{"offset": 0, "color": "#5b8def"}, {"offset": 1, "color": "#91CC75"}]}, "curveness": 0.25, "opacity": 0.6, "width": 0}, "_id": 15},
+{"source": "2016", "target": "越南", "value": 1380243920, "layer": 2, "country": "越南", "_baseOpacity": 0.6, "lineStyle": {"color": {"type": "linear", "x": 0, "y": 0, "x2": 1, "y2": 0, "colorStops": [{"offset": 0, "color": "#5b8def"}, {"offset": 1, "color": "#FAC858"}]}, "curveness": 0.25, "opacity": 0.6, "width": 0}, "_id": 16}, 
+{"source": "2017", "target": "老挝", "value": 56046697, "layer": 2, "country": "老挝", "_baseOpacity": 0.6, "lineStyle": {"color": {"type": "linear", "x": 0, "y": 0, "x2": 1, "y2": 0, "colorStops": [{"offset": 0, "color": "#5b8def"}, {"offset": 1, "color": "#91CC75"}]}, "curveness": 0.25, "opacity": 0.6, "width": 0}, "_id": 18}, 
+{"source": "2017", "target": "越南", "value": 1346768354, "layer": 2, "country": "越南", "_baseOpacity": 0.6, "lineStyle": {"color": {"type": "linear", "x": 0, "y": 0, "x2": 1, "y2": 0, "colorStops": [{"offset": 0, "color": "#5b8def"}, {"offset": 1, "color": "#FAC858"}]}, "curveness": 0.25, "opacity": 0.6, "width": 0}, "_id": 19}, 
+{"source": "2017", "target": "缅甸", "value": 330779350, "layer": 2, "country": "缅甸", "_baseOpacity": 0.6, "lineStyle": {"color": {"type": "linear", "x": 0, "y": 0, "x2": 1, "y2": 0, "colorStops": [{"offset": 0, "color": "#5b8def"}, {"offset": 1, "color": "#EE6666"}]}, "curveness": 0.25, "opacity": 0.6, "width": 0}, "_id": 17}, 
+{"source": "2018", "target": "缅甸", "value": 507431332, "layer": 2, "country": "缅甸", "_baseOpacity": 0.6, "lineStyle": {"color": {"type": "linear", "x": 0, "y": 0, "x2": 1, "y2": 0, "colorStops": [{"offset": 0, "color": "#5b8def"}, {"offset": 1, "color": "#EE6666"}]}, "curveness": 0.25, "opacity": 0.6, "width": 0}, "_id": 20}, 
+{"source": "2018", "target": "老挝", "value": 24031552, "layer": 2, "country": "老挝", "_baseOpacity": 0.6, "lineStyle": {"color": {"type": "linear", "x": 0, "y": 0, "x2": 1, "y2": 0, "colorStops": [{"offset": 0, "color": "#5b8def"}, {"offset": 1, "color": "#91CC75"}]}, "curveness": 0.25, "opacity": 0.6, "width": 0}, "_id": 21}, 
+{"source": "2018", "target": "越南", "value": 1628421387, "layer": 2, "country": "越南", "_baseOpacity": 0.6, "lineStyle": {"color": {"type": "linear", "x": 0, "y": 0, "x2": 1, "y2": 0, "colorStops": [{"offset": 0, "color": "#5b8def"}, {"offset": 1, "color": "#FAC858"}]}, "curveness": 0.25, "opacity": 0.6, "width": 0}, "_id": 22},
+{"source": "2019", "target": "缅甸", "value": 585143609, "layer": 2, "country": "缅甸", "_baseOpacity": 0.6, "lineStyle": {"color": {"type": "linear", "x": 0, "y": 0, "x2": 1, "y2": 0, "colorStops": [{"offset": 0, "color": "#5b8def"}, {"offset": 1, "color": "#EE6666"}]}, "curveness": 0.25, "opacity": 0.6, "width": 0}, "_id": 23}, 
+{"source": "2019", "target": "老挝", "value": 20452312, "layer": 2, "country": "老挝", "_baseOpacity": 0.6, "lineStyle": {"color": {"type": "linear", "x": 0, "y": 0, "x2": 1, "y2": 0, "colorStops": [{"offset": 0, "color": "#5b8def"}, {"offset": 1, "color": "#91CC75"}]}, "curveness": 0.25, "opacity": 0.6, "width": 0}, "_id": 24}, 
+{"source": "2019", "target": "越南", "value": 2302199244, "layer": 2, "country": "越南", "_baseOpacity": 0.6, "lineStyle": {"color": {"type": "linear", "x": 0, "y": 0, "x2": 1, "y2": 0, "colorStops": [{"offset": 0, "color": "#5b8def"}, {"offset": 1, "color": "#FAC858"}]}, "curveness": 0.25, "opacity": 0.6, "width": 0}, "_id": 25},
+{"source": "2020", "target": "缅甸", "value": 784029410, "layer": 2, "country": "缅甸", "_baseOpacity": 0.6, "lineStyle": {"color": {"type": "linear", "x": 0, "y": 0, "x2": 1, "y2": 0, "colorStops": [{"offset": 0, "color": "#5b8def"}, {"offset": 1, "color": "#EE6666"}]}, "curveness": 0.25, "opacity": 0.6, "width": 0}, "_id": 26},
+{"source": "2020", "target": "老挝", "value": 110244065, "layer": 2, "country": "老挝", "_baseOpacity": 0.6, "lineStyle": {"color": {"type": "linear", "x": 0, "y": 0, "x2": 1, "y2": 0, "colorStops": [{"offset": 0, "color": "#5b8def"}, {"offset": 1, "color": "#91CC75"}]}, "curveness": 0.25, "opacity": 0.6, "width": 0}, "_id": 27}, 
+{"source": "2020", "target": "越南", "value": 1962537853, "layer": 2, "country": "越南", "_baseOpacity": 0.6, "lineStyle": {"color": {"type": "linear", "x": 0, "y": 0, "x2": 1, "y2": 0, "colorStops": [{"offset": 0, "color": "#5b8def"}, {"offset": 1, "color": "#FAC858"}]}, "curveness": 0.25, "opacity": 0.6, "width": 0}, "_id": 28}, 
+{"source": "2021", "target": "缅甸", "value": 870881229, "layer": 2, "country": "缅甸", "_baseOpacity": 0.6, "lineStyle": {"color": {"type": "linear", "x": 0, "y": 0, "x2": 1, "y2": 0, "colorStops": [{"offset": 0, "color": "#5b8def"}, {"offset": 1, "color": "#EE6666"}]}, "curveness": 0.25, "opacity": 0.6, "width": 0}, "_id": 29},
+{"source": "2021", "target": "老挝", "value": 12963054, "layer": 2, "country": "老挝", "_baseOpacity": 0.6, "lineStyle": {"color": {"type": "linear", "x": 0, "y": 0, "x2": 1, "y2": 0, "colorStops": [{"offset": 0, "color": "#5b8def"}, {"offset": 1, "color": "#91CC75"}]}, "curveness": 0.25, "opacity": 0.6, "width": 0}, "_id": 30},
+{"source": "2021", "target": "越南", "value": 204972982, "layer": 2, "country": "越南", "_baseOpacity": 0.6, "lineStyle": {"color": {"type": "linear", "x": 0, "y": 0, "x2": 1, "y2": 0, "colorStops": [{"offset": 0, "color": "#5b8def"}, {"offset": 1, "color": "#FAC858"}]}, "curveness": 0.25, "opacity": 0.6, "width": 0}, "_id": 31}, 
+{"source": "2022", "target": "缅甸", "value": 891259090, "layer": 2, "country": "缅甸", "_baseOpacity": 0.6, "lineStyle": {"color": {"type": "linear", "x": 0, "y": 0, "x2": 1, "y2": 0, "colorStops": [{"offset": 0, "color": "#5b8def"}, {"offset": 1, "color": "#EE6666"}]}, "curveness": 0.25, "opacity": 0.6, "width": 0}, "_id": 32},
+{"source": "2022", "target": "老挝", "value": 52689546, "layer": 2, "country": "老挝", "_baseOpacity": 0.6, "lineStyle": {"color": {"type": "linear", "x": 0, "y": 0, "x2": 1, "y2": 0, "colorStops": [{"offset": 0, "color": "#5b8def"}, {"offset": 1, "color": "#91CC75"}]}, "curveness": 0.25, "opacity": 0.6, "width": 0}, "_id": 33}, 
+{"source": "2022", "target": "越南", "value": 523950693, "layer": 2, "country": "越南", "_baseOpacity": 0.6, "lineStyle": {"color": {"type": "linear", "x": 0, "y": 0, "x2": 1, "y2": 0, "colorStops": [{"offset": 0, "color": "#5b8def"}, {"offset": 1, "color": "#FAC858"}]}, "curveness": 0.25, "opacity": 0.6, "width": 0}, "_id": 34},
+{"source": "2023", "target": "缅甸", "value": 1727833305, "layer": 2, "country": "缅甸", "_baseOpacity": 0.6, "lineStyle": {"color": {"type": "linear", "x": 0, "y": 0, "x2": 1, "y2": 0, "colorStops": [{"offset": 0, "color": "#5b8def"}, {"offset": 1, "color": "#EE6666"}]}, "curveness": 0.25, "opacity": 0.6, "width": 0}, "_id": 35}, 
+{"source": "2023", "target": "老挝", "value": 105442907, "layer": 2, "country": "老挝", "_baseOpacity": 0.6, "lineStyle": {"color": {"type": "linear", "x": 0, "y": 0, "x2": 1, "y2": 0, "colorStops": [{"offset": 0, "color": "#5b8def"}, {"offset": 1, "color": "#91CC75"}]}, "curveness": 0.25, "opacity": 0.6, "width": 0}, "_id": 36}, 
+{"source": "2023", "target": "越南", "value": 1250287271, "layer": 2, "country": "越南", "_baseOpacity": 0.6, "lineStyle": {"color": {"type": "linear", "x": 0, "y": 0, "x2": 1, "y2": 0, "colorStops": [{"offset": 0, "color": "#5b8def"}, {"offset": 1, "color": "#FAC858"}]}, "curveness": 0.25, "opacity": 0.6, "width": 0}, "_id": 37}, 
+{"source": "2024", "target": "缅甸", "value": 1078970314, "layer": 2, "country": "缅甸", "_baseOpacity": 0.6, "lineStyle": {"color": {"type": "linear", "x": 0, "y": 0, "x2": 1, "y2": 0, "colorStops": [{"offset": 0, "color": "#5b8def"}, {"offset": 1, "color": "#EE6666"}]}, "curveness": 0.25, "opacity": 0.6, "width": 0}, "_id": 38},
+{"source": "2024", "target": "老挝", "value": 139267024, "layer": 2, "country": "老挝", "_baseOpacity": 0.6, "lineStyle": {"color": {"type": "linear", "x": 0, "y": 0, "x2": 1, "y2": 0, "colorStops": [{"offset": 0, "color": "#5b8def"}, {"offset": 1, "color": "#91CC75"}]}, "curveness": 0.25, "opacity": 0.6, "width": 0}, "_id": 39}, 
+{"source": "2024", "target": "越南", "value": 1740452258, "layer": 2, "country": "越南", "_baseOpacity": 0.6, "lineStyle": {"color": {"type": "linear", "x": 0, "y": 0, "x2": 1, "y2": 0, "colorStops": [{"offset": 0, "color": "#5b8def"}, {"offset": 1, "color": "#FAC858"}]}, "curveness": 0.25, "opacity": 0.6, "width": 0}, "_id": 40},
+{"source": "2025", "target": "缅甸", "value": 740648822, "layer": 2, "country": "缅甸", "_baseOpacity": 0.6, "lineStyle": {"color": {"type": "linear", "x": 0, "y": 0, "x2": 1, "y2": 0, "colorStops": [{"offset": 0, "color": "#5b8def"}, {"offset": 1, "color": "#EE6666"}]}, "curveness": 0.25, "opacity": 0.6, "width": 0}, "_id": 41},
+{"source": "2025", "target": "老挝", "value": 96746125, "layer": 2, "country": "老挝", "_baseOpacity": 0.6, "lineStyle": {"color": {"type": "linear", "x": 0, "y": 0, "x2": 1, "y2": 0, "colorStops": [{"offset": 0, "color": "#5b8def"}, {"offset": 1, "color": "#91CC75"}]}, "curveness": 0.25, "opacity": 0.6, "width": 0}, "_id": 42}, 
+{"source": "2025", "target": "越南", "value": 2344098086, "layer": 2, "country": "越南", "_baseOpacity": 0.6, "lineStyle": {"color": {"type": "linear", "x": 0, "y": 0, "x2": 1, "y2": 0, "colorStops": [{"offset": 0, "color": "#5b8def"}, {"offset": 1, "color": "#FAC858"}]}, "curveness": 0.25, "opacity": 0.6, "width": 0}, "_id": 43}];
+
+const chartDom = document.getElementById('chart');
+const myChart = echarts.init(chartDom, null, {renderer:'canvas'});
+
+// ---------- 工具：根据当前高亮状态生成 links ----------
+function buildLinks(state){
+  return LINKS.map(lk => {
+    let opacity = lk._baseOpacity;
+    let width   = 0;
+    let shadow  = 0;
+    let shadowCol = 'transparent';
+
+    if(state){
+      let active = false;
+      if(state.type === 'country'){
+        if(lk.layer === 2 && lk.target === state.name) active = true;
+        if(lk.layer === 1){
+          const hasActive = LINKS.some(x => x.layer===2 && x.target===state.name && x.source===lk.target);
+          if(hasActive) active = true;
+        }
+      } else if(state.type === 'year'){
+        if(lk.source === state.name || lk.target === state.name) active = true;
+      } else if(state.type === 'edge'){
+        if(lk.source===state.source && lk.target===state.target) active = true;
+      }
+      if(active){
+        opacity = 0.95;
+        width   = lk.layer===1 ? 6 : 4;
+        shadow  = 12;
+        shadowCol = (lk.lineStyle.color && lk.lineStyle.color.colorStops) ?
+                    lk.lineStyle.color.colorStops[1].color : '#FAC858';
+      } else {
+        opacity = lk._baseOpacity * 0.55;
+      }
+    }
+
+    return Object.assign({}, lk, {
+      lineStyle: Object.assign({}, lk.lineStyle, {
+        opacity: opacity,
+        width:   width,
+        shadowBlur:  shadow,
+        shadowColor: shadowCol
+      })
+    });
+  });
+}
+
+function buildOption(state){
+  return {
+    backgroundColor:'transparent',
+    title:{
+      show: false, // 彻底关闭图表标题，删除截图里的文字
+    },
+    tooltip:{
+      trigger:'item', triggerOn:'mousemove',
+      backgroundColor:'rgba(15,23,42,.92)',
+      borderColor:'rgba(84,112,198,.5)', borderWidth:1,
+      textStyle:{color:'#e0e0e0', fontSize:13},
+      formatter: function(p){
+        if(p.dataType==='edge'){
+          const total = 25512550608;
+          const pct = ((p.data.value/total)*100).toFixed(2);
+          return `<div style="padding:6px 10px">
+            <div style="font-size:14px;color:#91CC75;margin-bottom:4px">
+              <b>${p.data.source} → ${p.data.target}</b></div>
+            <div>电量：<span style="color:#FAC858;font-size:15px;font-weight:bold">
+              ${(p.data.value/1e8).toFixed(2)} 亿 kWh</span></div>
+            <div style="font-size:11px;color:#8896a7;margin-top:3px">占比：${pct}%</div>
+          </div>`;
+        }
+        if(p.dataType==='node'){
+          return `<div style="padding:6px 10px"><b>${p.name}</b><br/>
+            总计：<span style="color:#91CC75;font-weight:bold">
+            ${(p.value/1e8).toFixed(2)} 亿 kWh</span></div>`;
+        }
+      }
+    },
+    series:[{
+      type:'sankey',
+      layout:'none',
+      emphasis:{focus:'none'},
+
+      data: NODES,
+      links: buildLinks(state),
+
+      itemStyle:{borderWidth:0, borderRadius:24,
+                 shadowBlur:8, shadowColor:'rgba(0,0,0,.3)'},
+      lineStyle:{color:'source', curveness:0.3, opacity:0.6},
+      label:{fontSize:12, color:'#ccc'}
+    }]
+  };
+}
+
+// 初始
+let currentState = null;
+myChart.setOption(buildOption(null));
+
+// ---------- 点击连线 ----------
+myChart.on('click', function(params){
+  if(params.dataType === 'edge'){
+    const src = params.data.source, tgt = params.data.target;
+    if(currentState && currentState.type==='edge'
+       && currentState.source===src && currentState.target===tgt){
+      currentState = null;
+    } else {
+      currentState = {type:'edge', source:src, target:tgt};
+    }
+    myChart.setOption(buildOption(currentState), true);
+    return;
+  }
+  if(params.dataType === 'node'){
+    const name = params.data.name;
+    if(name === '中国'){
+      currentState = null;
+    } else if(['缅甸','老挝','越南'].includes(name)){
+      currentState = (currentState && currentState.type==='country' && currentState.name===name)
+                     ? null : {type:'country', name:name};
+    } else {
+      currentState = (currentState && currentState.type==='year' && currentState.name===name)
+                     ? null : {type:'year', name:name};
+    }
+    myChart.setOption(buildOption(currentState), true);
+    return;
+  }
+  currentState = null;
+  myChart.setOption(buildOption(null), true);
+});
+
+// ---------- 右侧图例点击 ----------
+document.querySelectorAll('.lg').forEach(el => {
+  el.addEventListener('click', () => {
+    const c = el.getAttribute('data-country');
+    if(currentState && currentState.type==='country' && currentState.name===c){
+      currentState = null;
+    } else {
+      currentState = {type:'country', name:c};
+    }
+    myChart.setOption(buildOption(currentState), true);
+  });
+});
+
+window.addEventListener('resize', ()=> myChart.resize());
+
+//==================== 侧边栏中点箭头按钮控制（互换逻辑已完成） ====================
+const leftPanel = document.querySelector('.side-left');
+const rightPanel = document.querySelector('.side-right');
+const btnToggleLeft = document.getElementById('toggleLeft');
+const btnToggleRight = document.getElementById('toggleRight');
+
+function updateToggleButtons(){
+  const leftCollapsed = leftPanel.classList.contains('collapse');
+  const rightCollapsed = rightPanel.classList.contains('collapse');
+  // 左侧边栏展开 → >  收起 → <
+  btnToggleLeft.textContent = leftCollapsed ? '<' : '>';
+  // 右侧边栏展开 → <  收起 → >
+  btnToggleRight.textContent = rightCollapsed ? '>' : '<';
+}
+
+btnToggleLeft.addEventListener('click',()=>{
+  leftPanel.classList.toggle('collapse');
+  updateToggleButtons();
+  setTimeout(()=>myChart.resize(),420);
+})
+
+btnToggleRight.addEventListener('click',()=>{
+  rightPanel.classList.toggle('collapse');
+  updateToggleButtons();
+  setTimeout(()=>myChart.resize(),420);
+})
+//==================================================================
+</script>
+</body>
+</html>
